@@ -4,9 +4,9 @@
 int main(void) {
     TEST_RUN("panic");
 
-    TEST_ASSERT(ones_panic != NULL);
+    TEST_ASSERT(ones_panic_at != NULL);
 
-    ones_panic("test panic message");
+    ONES_PANIC("test panic message");
 
     TEST_SUMMARY();
 }

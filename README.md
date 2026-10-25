@@ -11,7 +11,8 @@
   - [2. Include and Use](#2-include-and-use)
   - [3. Compile Your Program](#3-compile-your-program)
 - [API Reference](#api-reference)
-  - [`ones_panic`](#ones_panic)
+  - [String](#string)
+  - [`ONES_PANIC`](#ONES_PANIC)
   - [`ONES_MOVE`](#ones_move)
   - [`ONES_DECL_ARR(type)`](#ones_decl_arrtype)
 - [Code Examples](#code-examples)
@@ -29,7 +30,7 @@
 | Feature | Description |
 |---------|-------------|
 | **Single Header** | Everything lives in `ones.h`. Copy it into your project and `#include "ones.h"`. No `.c` files to compile, no libraries to link. |
-| **Panic Handling** | `ones_panic()` prints a descriptive error message (with file name and line number) to `stderr` and aborts the program. |
+| **Panic Handling** | `ONES_PANIC()` prints a descriptive error message (with file name and line number) to `stderr` and aborts the program. |
 | **Pointer Move** | `ONES_MOVE(des, src)` safely transfers pointer ownership and sets the source to `NULL`, preventing double-free and dangling pointer bugs. |
 | **Type-Generic Dynamic Array** | `ONES_DECL_ARR(type)` generates a complete dynamic array API for any type (`int`, `double`, `struct`, etc.), including init, deinit, create, destroy, push back, and pop back. |
 | **C99 Compliant** | Written in standard C99, works with GCC, Clang, and MSVC. |
@@ -92,10 +93,67 @@ No extra include paths are needed as long as `ones.h` is in the same directory a
 
 ## API Reference
 
-### `ones_panic`
+### String
+
+#### `ones_str_builder`
 
 ```c
-void ones_panic(const char *format, ...);
+typedef struct {
+    char *c_str;
+    size_t size;
+    size_t capa;
+} ones_str_builder;
+```
+
+Builds a null-terminated string incrementally.
+
+**`ones_str_builder_init(ones_str_builder *builder)`**
+Initialize a stack-allocated builder to an empty state.
+
+**`ones_str_builder_deinit(ones_str_builder *builder)`**
+Free the internal buffer and reset the builder.
+
+**`ones_str_builder *ones_str_builder_create(void)`**
+Heap-allocate and initialize a new builder. Returns `NULL` on allocation failure (panics).
+
+**`void ones_str_builder_destroy(ones_str_builder *builder)`**
+Free the internal buffer and the builder itself.
+
+**`bool ones_str_builder_push_char(ones_str_builder *builder, char c)`**
+Append a single character. The buffer stays null-terminated.
+
+**`bool ones_str_builder_push_str(ones_str_builder *builder, const char *str)`**
+Append a null-terminated string. An empty string is a no-op.
+
+**`ones_str_view ones_str_builder_as_str_view(ones_str_builder *builder)`**
+Return a `ones_str_view` over the current contents.
+
+#### `ones_str_view`
+
+```c
+typedef struct {
+    const char *data;
+    size_t size;
+} ones_str_view;
+```
+
+A non-owning view over a string slice.
+
+**`ones_str_view ones_str_view_triml(ones_str_view view)`**
+Return a view with leading whitespace removed.
+
+**`ones_str_view ones_str_view_trimr(ones_str_view view)`**
+Return a view with trailing whitespace removed.
+
+**`ones_str_view ones_str_view_trim(ones_str_view view)`**
+Return a view with both leading and trailing whitespace removed.
+
+---
+
+### `ONES_PANIC`
+
+```c
+void ONES_PANIC(const char *format, ...);
 ```
 
 **Description:**  
@@ -112,7 +170,7 @@ Then calls `abort()` to terminate the program immediately.
 **Example:**
 ```c
 if (ptr == NULL) {
-    ones_panic("memory allocation failed for size %zu", size);
+    ONES_PANIC("memory allocation failed for size %zu", size);
 }
 ```
 
@@ -176,7 +234,7 @@ typedef struct {
 |----------|-----------|-------------|
 | `ones_arr_init_##type` | `void ones_arr_init_##type(ones_arr_##type *arr)` | Initialize an array to empty state (`data = NULL`, `size = 0`, `capa = 0`). |
 | `ones_arr_deinit_##type` | `void ones_arr_deinit_##type(ones_arr_##type *arr)` | Free the element buffer and reset the array to empty state. |
-| `ones_arr_create_##type` | `ones_arr_##type *ones_arr_create_##type(void)` | Allocate a new array struct on the heap and return its pointer. Returns `NULL` on allocation failure (triggers `ones_panic`). |
+| `ones_arr_create_##type` | `ones_arr_##type *ones_arr_create_##type(void)` | Allocate a new array struct on the heap and return its pointer. Returns `NULL` on allocation failure (triggers `ONES_PANIC`). |
 | `ones_arr_destroy_##type` | `void ones_arr_destroy_##type(ones_arr_##type *arr)` | Free the element buffer, then free the array struct itself. |
 | `ones_arr_push_back_##type` | `bool ones_arr_push_back_##type(ones_arr_##type *arr, type value)` | Append `value` to the end. Automatically grows capacity (starting at 4, doubling when full). Returns `true` on success. |
 | `ones_arr_pop_back_##type` | `bool ones_arr_pop_back_##type(ones_arr_##type *arr)` | Remove the last element (decrements `size`). Does not free memory. Returns `true` on success, panics if array is empty. |
@@ -327,7 +385,7 @@ d == c: true
 
 int divide(int a, int b) {
     if (b == 0) {
-        ones_panic("division by zero: %d / %d", a, b);
+        ONES_PANIC("division by zero: %d / %d", a, b);
     }
     return a / b;
 }
@@ -372,9 +430,10 @@ ctest --output-on-failure
 
 | Test Name | Description |
 |-----------|-------------|
-| `test_panic` | Verifies `ones_panic` exists and is callable (expected to abort; marked as `WILL_FAIL` in CTest). |
+| `test_panic` | Verifies `ONES_PANIC` exists and is callable (expected to abort; marked as `WILL_FAIL` in CTest). |
 | `test_arr` | Tests dynamic arrays for `int` and `double`: init, push_back, pop_back, deinit, create, destroy. |
 | `test_move` | Tests `ONES_MOVE`: verifies source becomes `NULL` and destination receives the original pointer. |
+| `test_str`  | Tests string builder and string view: init, create, push_char, push_str, as_str_view, triml, trimr, trim. |
 
 ### One-line build and test
 
@@ -392,7 +451,8 @@ ones/
 ├── test_utils.h      # Minimal test assertions used by the test suite
 ├── test_arr.c        # Unit tests for dynamic arrays
 ├── test_move.c       # Unit tests for ONES_MOVE
-├── test_panic.c      # Unit tests for ones_panic
+├── test_panic.c      # Unit tests for ONES_PANIC
+├── test_str.c        # Unit tests for string builder and string view
 ├── CMakeLists.txt    # CMake build configuration with CTest
 ├── README.md         # This file
 ├── LICENSE           # MIT License

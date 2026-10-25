@@ -1,8 +1,8 @@
 #include "ones.h"
 #include "test_utils.h"
 
-ONES_DECL_ARR(int)
-ONES_DECL_ARR(double)
+ONES_DECL_ARR(int, int)
+ONES_DECL_ARR(double, double)
 
 int main(void) {
     TEST_RUN("dynamic array");

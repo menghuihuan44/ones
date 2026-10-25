@@ -8,7 +8,7 @@ int main(void) {
     TEST_ASSERT(p != NULL);
 
     int *d = NULL, *c = p;
-    ONES_MOVE(&d, p);
+    ONES_MOVE_PTR(&d, p);
     TEST_ASSERT(p == NULL);
     TEST_ASSERT(d != NULL);
     TEST_ASSERT(d == c);
