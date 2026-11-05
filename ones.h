@@ -5,26 +5,55 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <ctype.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ONES_API static inline
 
-/* panic */
+#ifdef _WIN32
+    #define ONES_LINE_END "\r\n"
+#else
+    #define ONES_LINE_END "\n"
+#endif
 
-ONES_API void ones_panic_at(const char *file, int line, const char *format, ...) {
-    fprintf(stderr, "panic at %s:%d: ", file, line);
-    va_list args;
-    va_start(args, format);
-    vfprintf(stderr, format, args);
-    va_end(args);
-    fputs("\n", stderr);
-    abort();
-}
+#ifdef __cplusplus
+    #define ONES_DECLTYPE_CAST(T) (decltype(T))
+#else
+    #define ONES_DECLTYPE_CAST(T)
+#endif
+
+#if defined(__cplusplus)
+    #define ONES_NORETURN [[noreturn]]
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+    #define ONES_NORETURN [[noreturn]]
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+    #define ONES_NORETURN _Noreturn
+#elif defined(__GNUC__) || defined(__clang__)
+    #define ONES_NORETURN __attribute__((noreturn))
+#elif defined(_MSC_VER)
+    #define ONES_NORETURN __declspec(noreturn)
+#else
+    #define ONES_NORETURN
+#endif
+
+#define ONES_MAX(a, b) ((a) > (b) ? (a) : (b))
+#define ONES_MIN(a, b) ((a) < (b) ? (a) : (b))
+
+#define ONES_SWAP_T(T, a, b) do { T t = (a); (a) = (b); (b) = t; } while (0)
+
+/* panic && assert */
+
+ONES_NORETURN void ones_panic_at(const char *file, int line, const char *format, ...);
 
 #define ONES_PANIC(...) ones_panic_at(__FILE__, __LINE__, __VA_ARGS__)
+#define ONES_ASSERT(cond, ...) ((cond) ? (void)0 : (void)ones_panic_at(__FILE__, __LINE__, "" __VA_ARGS__))
 
-/* panic */
+/* panic && assert */
 
 /* move */
 
@@ -36,98 +65,66 @@ ONES_API void ones_panic_at(const char *file, int line, const char *format, ...)
 
 /* move */
 
-/* dynamic array */
+/* array */
 
-#define ONES_DECL_ARR(typename, type) \
-    typedef struct { \
-        type *data; \
-        size_t size; \
-        size_t capa; \
-    } ones_arr_##typename; \
-    \
-    ONES_API void ones_arr_init_##typename(ones_arr_##typename *arr) { \
-        if (!arr) { \
-            ONES_PANIC("invalid arr"); \
-            return; \
-        } \
-        \
-        arr->data = NULL; \
-        arr->size = 0; \
-        arr->capa = 0; \
-    } \
-    \
-    ONES_API void ones_arr_deinit_##typename(ones_arr_##typename *arr) { \
-        if (!arr) { \
-            ONES_PANIC("invalid arr"); \
-            return; \
-        } \
-        \
-        free(arr->data); \
-        arr->data = NULL; \
-        arr->size = 0; \
-        arr->capa = 0; \
-    } \
-    \
-    ONES_API ones_arr_##typename *ones_arr_create_##typename(void) { \
-        ones_arr_##typename *arr = (ones_arr_##typename *)malloc(sizeof(ones_arr_##typename)); \
-        if (!arr) { \
-            ONES_PANIC("run out of memory"); \
-            return NULL; \
-        } \
-        \
-        arr->data = NULL; \
-        arr->size = 0; \
-        arr->capa = 0; \
-        \
-        return arr; \
-    } \
-    \
-    ONES_API void ones_arr_destroy_##typename(ones_arr_##typename *arr) { \
-        if (!arr) { \
-            ONES_PANIC("invalid arr"); \
-            return; \
-        } \
-        \
-        free(arr->data); \
-        free(arr); \
-    } \
-    \
-    ONES_API bool ones_arr_push_back_##typename(ones_arr_##typename *arr, type value) { \
-        if (!arr) { \
-            ONES_PANIC("invalid arr"); \
-            return false; \
-        } \
-        \
-        if (arr->size >= arr->capa) { \
-            arr->capa = arr->capa == 0 ? 4 : arr->capa << 1; \
-            type *new_data = (type *)realloc(arr->data, sizeof(type) * arr->capa); \
-            if (!new_data) { \
-                ONES_PANIC("run out of memory"); \
-                return false; \
+#define ONES_ARR_LEN(array) (sizeof(array) / sizeof(array[0]))
+#define ONES_ARR_AT(array, len, ind) (ONES_ASSERT((size_t)(ind) < (size_t)(len), "index out of range"), array[(size_t)ind])
+
+#define ONES_ARR_MIN_CAP (4)
+
+#define ONES_DYN_ARR_RESERVE(data, capa, expected_capa) \
+    do { \
+        if ((expected_capa) > (capa)) { \
+            if (0 == (capa)) { \
+                (capa) = ONES_ARR_MIN_CAP; \
             } \
-            \
-            arr->data = new_data; \
+            while ((expected_capa) > (capa)) { \
+                ONES_ASSERT((capa) <= SIZE_MAX / 2, "capacity overflow"); \
+                (capa) <<= 1; \
+            } \
+            void *tmp = realloc((data), (capa) * sizeof(*(data))); \
+            ONES_ASSERT(tmp != NULL, "no space to alloc"); \
+            (data) = tmp; \
         } \
-        \
-        arr->data[arr->size++] = value; \
-        return true; \
-    } \
-    \
-    ONES_API bool ones_arr_pop_back_##typename(ones_arr_##typename *arr) { \
-        if (!arr) { \
-            ONES_PANIC("invalid arr"); \
-            return false; \
-        } \
-        if (!arr->size) { \
-            ONES_PANIC("arr's size is already zero"); \
-            return false; \
-        } \
-        \
-        --arr->size; \
-        return true; \
-    } \
+    } while (0)
 
-/* dynamic array */
+#define ONES_DYN_ARR_FREE(data) do { free((data)); (data) = NULL; } while (0)
+
+#define ONES_DYN_ARR_RESIZE(data, capa, size, new_size) \
+    do { \
+        ONES_DYN_ARR_RESERVE((data), (capa), (new_size)); \
+        (size) = (new_size); \
+    } while (0)
+
+#define ONES_DYN_ARR_CLEAR(size) do { (size) = 0; } while (0)
+
+#define ONES_DYN_ARR_PUSH(data, capa, size, value) \
+    do { \
+        ONES_DYN_ARR_RESERVE((data), (capa), (size) + 1); \
+        (data)[(size)++] = (value); \
+    } while (0)
+
+#define ONES_DYN_ARR_PUSHX(data, capa, size, values, n) \
+    do { \
+        ONES_DYN_ARR_RESERVE((data), (capa), (size) + (n)); \
+        memcpy((data) + (size), (values), (n) * sizeof(*(data))); \
+        (size) += (n); \
+    } while (0)
+
+#define ONES_DYN_ARR_POP(data, size) (data)[(ONES_ASSERT((size) > 0, "out of range"), --(size))]
+
+#define ONES_DYN_ARR_FIRST(data, size) (data)[(ONES_ASSERT((size) > 0, "out of range"), 0)]
+
+#define ONES_DYN_ARR_LAST(data, size) (data)[(ONES_ASSERT((size) > 0, "out of range"), (size) - 1)]
+
+#define ONES_DYN_REMOVE_UNORDERED(data, size, i) \
+    do { \
+        size_t j = (i); \
+        ONES_ASSERT(j < (size), "out of range"); \
+        (data)[j] = (data)[--(size)]; \
+    } while (0)
+
+/* array */
 
 /* string */
 
@@ -142,150 +139,68 @@ typedef struct {
     size_t size;
 } ones_str_view;
 
-ONES_API void ones_str_builder_init(ones_str_builder *builder) {
-    if (!builder) {
-        ONES_PANIC("invalid string builder");
-        return;
-    }
+#define ONES_SB_PUSH_BUF(sb, buf, buf_size) ONES_DYN_ARR_PUSHX((sb)->c_str, (sb)->capa, (sb)->size, (buf), (buf_size))
 
-    builder->c_str = NULL;
-    builder->size = 0;
-    builder->capa = 0;
-}
+#define ONES_SB_PUSH_SV(sb, sv) \
+    do { \
+        ones_str_view v = (sv); \
+        ONES_SB_PUSH_BUF((sb), v.data, v.size); \
+    } while (0)
 
-ONES_API void ones_str_builder_deinit(ones_str_builder *builder) {
-    if (!builder) {
-        ONES_PANIC("invalid string builder");
-        return;
-    }
+#define ONES_SB_PUSH_C_STR(sb, c_str) \
+    do { \
+        const char *s = (c_str); \
+        size_t n = strlen(s); \
+        ONES_SB_PUSH_BUF((sb), (s), (n)); \
+    } while (0)
 
-    free(builder->c_str);
-    builder->c_str = NULL;
-    builder->size = 0;
-    builder->capa = 0;
-}
+#define ONES_SB_SET_NULL(sb) \
+    do { \
+        ONES_DYN_ARR_RESERVE((sb)->c_str, (sb)->capa, (sb)->size + 1); \
+        (sb)->c_str[(sb)->size] = '\0'; \
+    } while (0)
 
-ONES_API ones_str_builder *ones_str_builder_create(void) {
-    ones_str_builder *builder = (ones_str_builder *)malloc(sizeof(ones_str_builder));
-    if (!builder) {
-        ONES_PANIC("run out of memory");
-        return NULL;
-    }
+#define ONES_SB_PUSH(sb, c) ONES_DYN_ARR_PUSH((sb)->c_str, (sb)->capa, (sb)->size, (c))
 
-    builder->c_str = NULL;
-    builder->size = 0;
-    builder->capa = 0;
-    return builder;
-}
-
-ONES_API void ones_str_builder_destroy(ones_str_builder *builder) {
-    if (!builder) {
-        ONES_PANIC("invalid string builder");
-        return;
-    }
-
-    free(builder->c_str);
-    free(builder);
-}
-
-ONES_API bool ones_str_builder_push_char(ones_str_builder *builder, char c) {
-    if (!builder) {
-        ONES_PANIC("invalid string builder");
-        return false;
-    }
-
-    if (builder->size >= builder->capa) {
-        builder->capa = builder->capa == 0 ? 4 : builder->capa << 1;
-        char *new_c_str = (char *)realloc(builder->c_str, builder->capa + 1);
-        if (!new_c_str) {
-            ONES_PANIC("run out of memory");
-            return false;
-        }
-
-        builder->c_str = new_c_str;
-    }
-
-    builder->c_str[builder->size++] = c;
-    builder->c_str[builder->size] = '\0';
-    return true;
-}
-
-ONES_API bool ones_str_builder_push_str(ones_str_builder *builder, const char *str) {
-    if (!builder) {
-        ONES_PANIC("invalid string builder");
-        return false;
-    }
-    if (!str) {
-        ONES_PANIC("invalid string");
-        return false;
-    }
-
-    size_t str_size = strlen(str);
-    if (str_size == 0) {
-        return true;
-    }
-
-    bool need_grow = false;
-    while (builder->size + str_size > builder->capa) {
-        builder->capa = builder->capa == 0 ? 4 : builder->capa << 1;
-        need_grow = true;
-    }
-
-    if (need_grow) {
-        char *new_c_str = (char *)realloc(builder->c_str, builder->capa + 1);
-        if (!new_c_str) {
-            ONES_PANIC("run out of memory");
-            return false;
-        }
-        builder->c_str = new_c_str;
-    }
-
-
-    memcpy(builder->c_str + builder->size, str, str_size);
-    builder->size += str_size;
-    builder->c_str[builder->size] = '\0';
-    return true;
-}
-
-ONES_API ones_str_view ones_str_builder_as_str_view(ones_str_builder *builder) {
-    if (!builder) {
-        ONES_PANIC("invalid string builder");
-        return (ones_str_view){0};
-    }
-
-    return (ones_str_view){.data = builder->c_str, .size = builder->size};
-}
-
-ONES_API ones_str_view ones_str_view_triml(ones_str_view view) {
-    while (view.size != 0 && isspace((unsigned char)*view.data)) {
-        ++view.data;
-        --view.size;
-    }
-
-    return view;
-}
-
-ONES_API ones_str_view ones_str_view_trimr(ones_str_view view) {
-    while (view.size != 0 && isspace((unsigned char)*(view.data + view.size - 1))) {
-        --view.size;
-    }
-
-    return view;
-}
-
-ONES_API ones_str_view ones_str_view_trim(ones_str_view view) {
-    return ones_str_view_triml(ones_str_view_trimr(view));
-}
+#define ONES_SB_FREE(sb) do { free((sb)->c_str); (sb)->c_str = NULL; (sb)->size = 0; (sb)->capa = 0; } while (0)
 
 /* string */
 
 /* io */
 
-ONES_API void ones_stdin_clear_line(void) {
+void ones_stdin_clear_line(void);
+
+/* io */
+
+#ifdef ONES_IMPLEMENTATION
+
+/* panic && assert */
+
+ONES_NORETURN void ones_panic_at(const char *file, int line, const char *format, ...) {
+    fprintf(stderr, "panic at %s:%d: ", file, line);
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+    fputs(ONES_LINE_END, stderr);
+    abort();
+}
+
+/* panic && assert */
+
+/* io */
+
+void ones_stdin_clear_line(void) {
     int c;
     while ((c = getchar()) != '\n' && c != EOF) {}
 }
 
 /* io */
+
+#endif
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ONES_H */
