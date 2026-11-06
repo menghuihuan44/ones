@@ -86,6 +86,9 @@ if(NOT ONES_TEST_MODE STREQUAL "OFF")
     add_ones_test(test_arr test_arr.c)
     add_ones_test(test_move test_move.c)
     add_ones_test(test_str test_str.c)
+    add_ones_test(test_sv test_sv.c)
+    add_ones_test(test_sb test_sb.c)
+    add_ones_test(test_macros test_macros.c)
 endif()
 
 # ---------------------------------------------------------------------------

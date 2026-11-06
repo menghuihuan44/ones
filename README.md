@@ -427,6 +427,9 @@ cmake -S . -B build -DONES_TEST_MODE=OFF
 | `test_arr` | Tests `ONES_DYN_ARR_*` macros for `int` and `double`: push, pop, first, last, reserve, clear, free. |
 | `test_move` | Tests `ONES_MOVE_PTR`: verifies source becomes `NULL` and destination receives the original pointer. |
 | `test_str` | Tests `ONES_SB_*` string builder macros: push char/c_str/buf, str view, free & reuse. |
+| `test_sv` | Tests `ones_sv_*` string view functions: from_parts/c_str, is_equal, find, chop_while/delim/sv, chop_left/right, start/end_with, chop_prefix/suffix, trim, ONES_SV_FMT. |
+| `test_sb` | Tests extended `ONES_SB_*` string builder: `PUSH_FMT`, `PUSH_SV`, `PUSH_BUF`, build-without-terminate, free & reuse. |
+| `test_macros` | Tests `ONES_MAX/MIN/SWAP_T`, `ONES_ARR_LEN/AT`, `ONES_DYN_REMOVE_UNORDERED`. |
 
 ### One-line build and test
 
@@ -451,7 +454,10 @@ ones/
     ├── test_panic.c   # Unit tests for ONES_PANIC / ONES_ASSERT
     ├── test_arr.c     # Unit tests for ONES_DYN_ARR_* dynamic arrays
     ├── test_move.c    # Unit tests for ONES_MOVE_PTR
-    └── test_str.c     # Unit tests for ONES_SB_* string builder
+    ├── test_str.c     # Unit tests for ONES_SB_* string builder
+    ├── test_sv.c      # Unit tests for ones_sv_* string view
+    ├── test_sb.c      # Unit tests for extended ONES_SB_* string builder
+    └── test_macros.c  # Unit tests for ONES_MAX/MIN/SWAP_T/ARR_*/DYN_REMOVE_UNORDERED
 ```
 
 Build directories (`build/`, `build-asan/`, `build-ubsan/`, `build-cov/`, `build-strict/`, `build-clang/`, `build-gcc/`, `build-msvc/`) are generated locally and ignored by Git.
