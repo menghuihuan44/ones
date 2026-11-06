@@ -15,7 +15,7 @@ static int g_tests_failed = 0;
     } else { \
         g_tests_passed++; \
     } \
-} while(0)
+} while (0)
 
 #define TEST_ASSERT_INT_EQ(expected, actual) do { \
     int _e = (expected); \
@@ -27,7 +27,7 @@ static int g_tests_failed = 0;
     } else { \
         g_tests_passed++; \
     } \
-} while(0)
+} while (0)
 
 #define TEST_ASSERT_SIZE_T_EQ(expected, actual) do { \
     size_t _e = (expected); \
@@ -39,7 +39,7 @@ static int g_tests_failed = 0;
     } else { \
         g_tests_passed++; \
     } \
-} while(0)
+} while (0)
 
 #define TEST_ASSERT_DOUBLE_EQ(expected, actual) do { \
     double _e = (expected); \
@@ -51,7 +51,7 @@ static int g_tests_failed = 0;
     } else { \
         g_tests_passed++; \
     } \
-} while(0)
+} while (0)
 
 #define TEST_ASSERT_STR_EQ(expected, actual) do { \
     if (strcmp((expected), (actual)) != 0) { \
@@ -61,11 +61,45 @@ static int g_tests_failed = 0;
     } else { \
         g_tests_passed++; \
     } \
-} while(0)
+} while (0)
+
+#define TEST_ASSERT_PTR_EQ(expected, actual) do { \
+    const void *_e = (const void *)(expected); \
+    const void *_a = (const void *)(actual); \
+    if (_e != _a) { \
+        fprintf(stderr, "FAIL: %s:%d: %s == %p, but expected %p\n", \
+                __FILE__, __LINE__, #actual, _a, _e); \
+        g_tests_failed++; \
+    } else { \
+        g_tests_passed++; \
+    } \
+} while (0)
+
+#define TEST_ASSERT_BOOL_EQ(expected, actual) do { \
+    int _e = (expected) ? 1 : 0; \
+    int _a = (actual) ? 1 : 0; \
+    if (_e != _a) { \
+        fprintf(stderr, "FAIL: %s:%d: %s == %d, but expected %d\n", \
+                __FILE__, __LINE__, #actual, _a, _e); \
+        g_tests_failed++; \
+    } else { \
+        g_tests_passed++; \
+    } \
+} while (0)
+
+#define TEST_ASSERT_MEM_EQ(expected, actual, n) do { \
+    if (memcmp((expected), (actual), (n)) != 0) { \
+        fprintf(stderr, "FAIL: %s:%d: memory mismatch (%s vs %s, %zu bytes)\n", \
+                __FILE__, __LINE__, #expected, #actual, (size_t)(n)); \
+        g_tests_failed++; \
+    } else { \
+        g_tests_passed++; \
+    } \
+} while (0)
 
 #define TEST_RUN(name) do { \
-    printf("=== Running test: %s ===\n", name); \
-} while(0)
+    printf("=== Running test: %s ===\n", (name)); \
+} while (0)
 
 #define TEST_SUMMARY() do { \
     printf("\n=== Test Summary ===\n"); \
@@ -78,6 +112,6 @@ static int g_tests_failed = 0;
         printf("RESULT: PASSED\n"); \
         return 0; \
     } \
-} while(0)
+} while (0)
 
 #endif /* TEST_UTILS_H */

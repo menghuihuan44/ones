@@ -20,13 +20,15 @@ set(ONES_TEST_MODE "ON" CACHE STRING "Test build mode: OFF=skip, ON=default, ASA
 
 set(ONES_BUILD_EXAMPLES ON CACHE BOOL "Build the main.c example")
 
+set(ONES_BUILD_BENCHMARKS ON CACHE BOOL "Build the benchmark programs")
+
 # ---------------------------------------------------------------------------
 # Common warning flags
 # ---------------------------------------------------------------------------
 if(MSVC)
-    set(ONES_TEST_WARNING_FLAGS "/W4")
+    set(ONES_TEST_WARNING_FLAGS /W4)
 else()
-    set(ONES_TEST_WARNING_FLAGS "-Wall -Wextra")
+    set(ONES_TEST_WARNING_FLAGS -Wall -Wextra)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -77,6 +79,24 @@ macro(add_ones_test name src)
 endmacro()
 
 # ---------------------------------------------------------------------------
+# Helper: add a benchmark executable
+# ---------------------------------------------------------------------------
+macro(add_ones_bench name src)
+    add_executable(${name} bench/${src})
+    target_include_directories(${name} PRIVATE . bench)
+    target_compile_definitions(${name} PRIVATE ONES_IMPLEMENTATION)
+    target_compile_options(${name} PRIVATE ${ONES_TEST_WARNING_FLAGS})
+    if(ONES_MODE_COMPILE_FLAGS)
+        target_compile_options(${name} PRIVATE ${ONES_MODE_COMPILE_FLAGS})
+    endif()
+    if(ONES_MODE_LINK_FLAGS)
+        target_link_options(${name} PRIVATE ${ONES_MODE_LINK_FLAGS})
+    endif()
+    add_test(NAME ${name} COMMAND ${name})
+    set_tests_properties(${name} PROPERTIES LABELS "benchmark")
+endmacro()
+
+# ---------------------------------------------------------------------------
 # Test targets
 # ---------------------------------------------------------------------------
 if(NOT ONES_TEST_MODE STREQUAL "OFF")
@@ -97,4 +117,16 @@ endif()
 if(ONES_BUILD_EXAMPLES)
     add_executable(ones_example main.c)
     target_include_directories(ones_example PRIVATE .)
+endif()
+# ---------------------------------------------------------------------------
+# Benchmarks
+# ---------------------------------------------------------------------------
+if(ONES_BUILD_BENCHMARKS)
+    add_ones_bench(bench_arr bench_arr.c)
+    add_ones_bench(bench_sv bench_sv.c)
+    add_ones_bench(bench_sb bench_sb.c)
+    add_ones_bench(bench_macros bench_macros.c)
+
+    add_custom_target(ones_benchmarks
+        DEPENDS bench_arr bench_sv bench_sb bench_macros)
 endif()

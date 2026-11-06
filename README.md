@@ -431,6 +431,33 @@ cmake -S . -B build -DONES_TEST_MODE=OFF
 | `test_sb` | Tests extended `ONES_SB_*` string builder: `PUSH_FMT`, `PUSH_SV`, `PUSH_BUF`, build-without-terminate, free & reuse. |
 | `test_macros` | Tests `ONES_MAX/MIN/SWAP_T`, `ONES_ARR_LEN/AT`, `ONES_DYN_REMOVE_UNORDERED`. |
 
+### Available Benchmarks
+
+| Benchmark Name | Description |
+|----------------|-------------|
+| `bench_arr` | Benchmarks dynamic array push, bulk push (`PUSHX`), and reserve operations. |
+| `bench_sv` | Benchmarks string view `find` (small and large needles), `trim`, and `chop_by_delim`. |
+| `bench_sb` | Benchmarks string builder push char, C string, formatted text, and string view. |
+| `bench_macros` | Benchmarks `ONES_MAX/MIN`, `ONES_SWAP_T`, `ONES_ARR_AT`, and unordered removal. |
+
+Build and run benchmarks:
+
+```bash
+cmake -S . -B build && cmake --build build --target ones_benchmarks
+./build/bench_arr
+./build/bench_sv
+./build/bench_sb
+./build/bench_macros
+```
+
+On Windows (MSVC), executables are placed under `build/Debug/`.
+
+Run only benchmarks via CTest:
+
+```bash
+ctest --test-dir build -L benchmark --output-on-failure
+```
+
 ### One-line build and test
 
 ```bash
@@ -449,7 +476,7 @@ ones/
 ├── README.md          # This file
 ├── LICENSE            # MIT License
 ├── .gitignore         # Ignores build artifacts and IDE files
-└── test/              # Unit tests (built when ONES_TEST_MODE != OFF)
+├── test/              # Unit tests (built when ONES_TEST_MODE != OFF)
     ├── test_utils.h   # Minimal test assertions used by the test suite
     ├── test_panic.c   # Unit tests for ONES_PANIC / ONES_ASSERT
     ├── test_arr.c     # Unit tests for ONES_DYN_ARR_* dynamic arrays
@@ -458,6 +485,12 @@ ones/
     ├── test_sv.c      # Unit tests for ones_sv_* string view
     ├── test_sb.c      # Unit tests for extended ONES_SB_* string builder
     └── test_macros.c  # Unit tests for ONES_MAX/MIN/SWAP_T/ARR_*/DYN_REMOVE_UNORDERED
+└── bench/             # Benchmarks (built when ONES_BUILD_BENCHMARKS is ON)
+    ├── bench_utils.h  # Benchmark timing helpers
+    ├── bench_arr.c    # Benchmarks for dynamic arrays
+    ├── bench_sv.c     # Benchmarks for string views
+    ├── bench_sb.c     # Benchmarks for string builders
+    └── bench_macros.c # Benchmarks for utility macros
 ```
 
 Build directories (`build/`, `build-asan/`, `build-ubsan/`, `build-cov/`, `build-strict/`, `build-clang/`, `build-gcc/`, `build-msvc/`) are generated locally and ignored by Git.
